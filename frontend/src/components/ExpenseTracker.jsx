@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom'; // Import Link
 import TransactionForm from './TransactionForm';
 import TransactionList from './TransactionList';
 import Dashboard from '../pages/Dashboard';
@@ -140,6 +141,12 @@ const ExpenseTracker = () => {
           >
             Budgets
           </button>
+          <Link
+            to="/analytics"
+            className="px-4 py-2 rounded-md transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200"
+          >
+            Analytics
+          </Link>
         </div>
 
         {/* Export Buttons */}

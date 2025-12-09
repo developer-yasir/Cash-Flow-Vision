@@ -34,12 +34,14 @@ const expenseRoutes = require('./routes/expenses');
 const budgetRoutes = require('./routes/budgets');
 const recurringRoutes = require('./routes/recurring');
 const authRoutes = require('./routes/auth');
+const analyticsRoutes = require('./routes/analytics');
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/budgets', budgetRoutes);
 app.use('/api/recurring', recurringRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Root route
 app.get('/', (req, res) => {

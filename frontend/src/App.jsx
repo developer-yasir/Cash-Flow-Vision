@@ -3,6 +3,7 @@ import './App.css';
 import ExpenseTracker from './components/ExpenseTracker';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import AnalyticsPage from './pages/AnalyticsPage'; // Import AnalyticsPage
 import { useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -28,6 +29,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ExpenseTracker />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analytics" // New route for AnalyticsPage
+            element={
+              <ProtectedRoute>
+                <AnalyticsPage />
               </ProtectedRoute>
             }
           />

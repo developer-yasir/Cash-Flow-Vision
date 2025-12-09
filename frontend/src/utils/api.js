@@ -277,6 +277,26 @@ export const recurringAPI = {
   },
 };
 
+// Analytics API functions
+export const analyticsAPI = {
+  getSpendingByCategory: async (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    const response = await apiRequest(`/analytics/spending-by-category${queryParams ? `?${queryParams}` : ''}`);
+    if (response) {
+      return response.json();
+    }
+    return null;
+  },
+  getCashFlow: async (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    const response = await apiRequest(`/analytics/cash-flow${queryParams ? `?${queryParams}` : ''}`);
+    if (response) {
+      return response.json();
+    }
+    return null;
+  },
+};
+
 // Export CSV function
 export const exportCSV = async (type = null, category = null, startDate = null, endDate = null) => {
   const params = new URLSearchParams();
