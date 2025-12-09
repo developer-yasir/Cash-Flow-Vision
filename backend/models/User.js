@@ -36,6 +36,16 @@ const userSchema = new mongoose.Schema({
   avatar: {
     type: String // URL to user's avatar
   },
+  preferences: {
+    defaultCurrency: {
+      type: String,
+      default: 'USD'
+    },
+    enableNotifications: {
+      type: Boolean,
+      default: true
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now

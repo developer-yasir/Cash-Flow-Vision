@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const TransactionForm = ({ onSubmit, categories }) => {
+const TransactionForm = ({ onAddTransaction, onAddRecurringExpense, categories }) => {
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
@@ -9,49 +9,49 @@ const TransactionForm = ({ onSubmit, categories }) => {
     date: new Date().toISOString().split('T')[0],
     currency: 'USD',
     receipt: null,
-    isRecurring: false,
-    recurringPattern: 'monthly'
   });
+  const [isRecurringChecked, setIsRecurringChecked] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState('monthly');
+  const [recurringStartDate, setRecurringStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [recurringEndDate, setRecurringEndDate] = useState(''); // Optional end date
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-
+    if (name === 'isRecurringChecked') {
+      setIsRecurringChecked(checked);
+    } else if (name === 'recurringFrequency') {
+      setRecurringFrequency(value);
+    } else if (name === 'recurringStartDate') {
+      setRecurringStartDate(value);
+    } else if (name === 'recurringEndDate') {
+      setRecurringEndDate(value);
+    } else {
+      setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    }
     // Clear error when user starts typing
     if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
   const handleFileChange = (e) => {
-    setFormData(prev => ({
-      ...prev,
-      receipt: e.target.files[0]
-    }));
+    setFormData(prev => ({ ...prev, receipt: e.target.files[0] }));
   };
 
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
-    }
-
-    if (!formData.amount) {
-      newErrors.amount = 'Amount is required';
-    } else if (isNaN(formData.amount) || parseFloat(formData.amount) <= 0) {
-      newErrors.amount = 'Amount must be a positive number';
-    }
-
-    if (!formData.date) {
-      newErrors.date = 'Date is required';
+    if (!formData.description.trim()) newErrors.description = 'Description is required';
+    if (!formData.amount) newErrors.amount = 'Amount is required';
+    else if (isNaN(formData.amount) || parseFloat(formData.amount) <= 0) newErrors.amount = 'Amount must be a positive number';
+    if (!formData.date && !isRecurringChecked) newErrors.date = 'Date is required for single transactions';
+    
+    if (isRecurringChecked) {
+      if (!recurringStartDate) newErrors.recurringStartDate = 'Start date is required for recurring expense';
+      if (recurringEndDate && new Date(recurringEndDate) < new Date(recurringStartDate)) {
+        newErrors.recurringEndDate = 'End date cannot be before start date';
+      }
     }
 
     setErrors(newErrors);
@@ -62,12 +62,21 @@ const TransactionForm = ({ onSubmit, categories }) => {
     e.preventDefault();
 
     if (validateForm()) {
-      const transactionData = {
-        ...formData,
-        amount: parseFloat(formData.amount)
-      };
-
-      onSubmit(transactionData);
+      if (isRecurringChecked) {
+        onAddRecurringExpense({
+          description: formData.description,
+          amount: parseFloat(formData.amount),
+          category: formData.category,
+          frequency: recurringFrequency,
+          startDate: recurringStartDate,
+          endDate: recurringEndDate || null,
+        });
+      } else {
+        onAddTransaction({
+          ...formData,
+          amount: parseFloat(formData.amount),
+        });
+      }
 
       // Reset form
       setFormData({
@@ -78,9 +87,11 @@ const TransactionForm = ({ onSubmit, categories }) => {
         date: new Date().toISOString().split('T')[0],
         currency: 'USD',
         receipt: null,
-        isRecurring: false,
-        recurringPattern: 'monthly'
       });
+      setIsRecurringChecked(false);
+      setRecurringFrequency('monthly');
+      setRecurringStartDate(new Date().toISOString().split('T')[0]);
+      setRecurringEndDate('');
     }
   };
 
@@ -113,13 +124,7 @@ const TransactionForm = ({ onSubmit, categories }) => {
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="USD">USD ($)</option>
-              <option value="EUR">EUR (€)</option>
-              <option value="GBP">GBP (£)</option>
-              <option value="JPY">JPY (¥)</option>
-              <option value="CAD">CAD (C$)</option>
-              <option value="AUD">AUD (A$)</option>
-              <option value="INR">INR (₹)</option>
-              <option value="CNY">CNY (¥)</option>
+              <option value="PKR">PKR (RS)</option>
             </select>
           </div>
         </div>
@@ -174,53 +179,87 @@ const TransactionForm = ({ onSubmit, categories }) => {
             </select>
           </div>
 
-          <div>
-            <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-            <input
-              type="date"
-              id="date"
-              name="date"
-              value={formData.date}
-              onChange={handleChange}
-              className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.date ? 'border-red-500' : 'border-gray-300'
-              }`}
-            />
-            {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date}</p>}
-          </div>
+          {!isRecurringChecked && (
+            <div>
+              <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+              <input
+                type="date"
+                id="date"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.date ? 'border-red-500' : 'border-gray-300'
+                }`}
+              />
+              {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date}</p>}
+            </div>
+          )}
         </div>
 
         <div className="flex items-start">
           <div className="flex items-center h-5">
             <input
               type="checkbox"
-              id="isRecurring"
-              name="isRecurring"
-              checked={formData.isRecurring}
+              id="isRecurringChecked"
+              name="isRecurringChecked"
+              checked={isRecurringChecked}
               onChange={handleChange}
               className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
             />
           </div>
           <div className="ml-3 text-sm">
-            <label htmlFor="isRecurring" className="font-medium text-gray-700">Recurring Transaction</label>
+            <label htmlFor="isRecurringChecked" className="font-medium text-gray-700">Recurring Expense</label>
           </div>
         </div>
 
-        {formData.isRecurring && (
-          <div className="ml-6 p-4 bg-gray-50 rounded-md">
-            <label htmlFor="recurringPattern" className="block text-sm font-medium text-gray-700 mb-2">Recurring Pattern</label>
-            <select
-              id="recurringPattern"
-              name="recurringPattern"
-              value={formData.recurringPattern}
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
-            </select>
+        {isRecurringChecked && (
+          <div className="ml-6 p-4 bg-gray-50 rounded-md space-y-4">
+            <div>
+              <label htmlFor="recurringFrequency" className="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+              <select
+                id="recurringFrequency"
+                name="recurringFrequency"
+                value={recurringFrequency}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="recurringStartDate" className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  id="recurringStartDate"
+                  name="recurringStartDate"
+                  value={recurringStartDate}
+                  onChange={handleChange}
+                  className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.recurringStartDate ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {errors.recurringStartDate && <p className="text-red-500 text-sm mt-1">{errors.recurringStartDate}</p>}
+              </div>
+              <div>
+                <label htmlFor="recurringEndDate" className="block text-sm font-medium text-gray-700 mb-1">End Date (Optional)</label>
+                <input
+                  type="date"
+                  id="recurringEndDate"
+                  name="recurringEndDate"
+                  value={recurringEndDate}
+                  onChange={handleChange}
+                  className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.recurringEndDate ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {errors.recurringEndDate && <p className="text-red-500 text-sm mt-1">{errors.recurringEndDate}</p>}
+              </div>
+            </div>
           </div>
         )}
 

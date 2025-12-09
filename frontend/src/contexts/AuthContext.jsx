@@ -105,12 +105,14 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+
+
   const value = {
     user,
     register,
     login,
     logout,
-    loading
+    loading,
   };
 
   return (

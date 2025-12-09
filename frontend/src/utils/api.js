@@ -297,6 +297,28 @@ export const analyticsAPI = {
   },
 };
 
+// User API functions
+export const userAPI = {
+  getPreferences: async () => {
+    const response = await apiRequest('/user/preferences');
+    if (response) {
+      return response.json();
+    }
+    return null;
+  },
+
+  updatePreferences: async (preferences) => {
+    const response = await apiRequest('/user/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
+    });
+    if (response) {
+      return response.json();
+    }
+    return null;
+  },
+};
+
 // Export CSV function
 export const exportCSV = async (type = null, category = null, startDate = null, endDate = null) => {
   const params = new URLSearchParams();

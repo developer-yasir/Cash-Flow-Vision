@@ -112,6 +112,31 @@ CashflowVision/
 - Cost optimization suggestions
 - AI-powered insights
 
+### Key Areas for Improvement
+
+Based on the current feature set, here are some recommended improvements and new features to enhance the application.
+
+#### 1. Immediate UI/UX Enhancements
+- **Toast Notifications**: Implement non-intrusive notifications (toasts) for actions like adding, updating, or deleting transactions to provide better user feedback.
+- **Refactor Navigation**: Create a dedicated sidebar for main page navigation (Dashboard, Analytics, Settings) to separate it from content filtering controls (e.g., filtering expenses by type).
+- **Consistent Empty States**: Apply helpful "empty state" messages to all areas that display lists of data, such as the Dashboard's recent transactions.
+
+#### 2. Key Feature: Global Search & Advanced Filtering
+- **Global Search Bar**: Add a search bar to find transactions by description, category, or amount.
+- **Advanced Filtering**: On the transaction list, add controls to filter by date range and amount.
+- **Sorting**: Allow users to sort transactions by date or amount (ascending/descending).
+
+#### 3. Key Feature: User Settings Page
+- **Create a `/settings` page** that allows users to:
+  - Manage their profile (name, email).
+  - Change their password.
+  - Set a default currency for the application.
+  - Create, edit, and delete their own custom spending categories.
+
+#### 4. Architecture & Performance Improvements
+- **Optimize Dashboard Performance**: Create dedicated backend endpoints to serve aggregated data for the dashboard widgets, reducing client-side processing.
+- **Centralized State Management**: Introduce a state management solution like Zustand or expand the use of React Context to manage shared application data more efficiently and reduce redundant API calls.
+
 ## Contributing
 
 1. Fork the repository
