@@ -13,6 +13,16 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   // Check if user is logged in on initial load
   useEffect(() => {
@@ -105,12 +115,18 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const toggleTheme = () => {
+    setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
+  };
+
   const value = {
     user,
     register,
     login,
     logout,
-    loading
+    loading,
+    theme,
+    toggleTheme,
   };
 
   return (
