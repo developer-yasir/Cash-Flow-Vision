@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
+import { useTheme } from '../contexts/ThemeContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
 

@@ -2,9 +2,30 @@ const express = require('express');
 const router = express.Router();
 const Transaction = require('../models/Transaction');
 const Budget = require('../models/Budget');
+const RecurringExpense = require('../models/RecurringExpense'); // Added import
 const multer = require('multer');
 const path = require('path');
 const { protect } = require('../middleware/auth');
+
+// Helper function to calculate next occurrence (Moved to top)
+const calculateNextOccurrence = (startDate, frequency) => {
+    const date = new Date(startDate);
+    switch (frequency) {
+      case 'daily':
+        date.setDate(date.getDate() + 1);
+        break;
+      case 'weekly':
+        date.setDate(date.getDate() + 7);
+        break;
+      case 'monthly':
+        date.setMonth(date.getMonth() + 1);
+        break;
+      case 'yearly':
+        date.setFullYear(date.getFullYear() + 1);
+        break;
+    }
+    return date;
+};
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
@@ -70,9 +91,11 @@ router.get('/:id', protect, async (req, res) => {
 // POST new transaction - Protected
 router.post('/', protect, upload.single('receipt'), async (req, res) => {
   try {
+    const { isRecurring, frequency, startDate, endDate, ...rest } = req.body;
+
     const transactionData = {
-      ...req.body,
-      user: req.user._id  // Associate transaction with authenticated user
+      ...rest,
+      user: req.user._id,  // Associate transaction with authenticated user
     };
 
     // Add receipt file path if uploaded
@@ -80,10 +103,29 @@ router.post('/', protect, upload.single('receipt'), async (req, res) => {
       transactionData.receipt = `/uploads/${req.file.filename}`;
     }
 
+    // If it's a recurring expense, create an entry in RecurringExpense
+    if (isRecurring) { 
+      const nextOccurrence = calculateNextOccurrence(startDate, frequency);
+      await RecurringExpense.create({
+        user: req.user._id,
+        description: transactionData.description,
+        amount: transactionData.amount,
+        category: transactionData.category,
+        frequency,
+        startDate,
+        endDate,
+        nextOccurrence,
+      });
+      // Do not set isRecurring or recurringPattern on the Transaction
+      // as it represents a single instance of a potentially recurring item.
+      // These fields will default to false/null in the Transaction model.
+    }
+
     const transaction = new Transaction(transactionData);
     const savedTransaction = await transaction.save();
     res.status(201).json(savedTransaction);
   } catch (error) {
+    console.error('Error creating transaction:', error);
     res.status(400).json({ error: error.message });
   }
 });

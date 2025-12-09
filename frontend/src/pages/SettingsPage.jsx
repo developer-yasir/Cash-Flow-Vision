@@ -1,7 +1,7 @@
 import React from 'react';
 import UserPreferencesForm from '../components/UserPreferencesForm';
 import UserProfileForm from '../components/UserProfileForm';
-import ThemeToggle from '../components/ThemeToggle'; // Import ThemeToggle
+import ThemeToggle from '../components/ThemeToggle';
 
 const SettingsPage = () => {
   return (

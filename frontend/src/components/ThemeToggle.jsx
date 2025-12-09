@@ -1,9 +1,9 @@
 import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { SunIcon, MoonIcon } from '@heroicons/react/24/solid';
 
 const ThemeToggle = () => {
-  const { theme, toggleTheme } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="flex items-center space-x-2">
@@ -12,7 +12,10 @@ const ThemeToggle = () => {
       </label>
       <button
         id="theme-toggle"
-        onClick={toggleTheme}
+        onClick={() => {
+          console.log('Theme toggle button clicked!');
+          toggleTheme();
+        }}
         className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-gray-200 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 dark:bg-gray-700"
         role="switch"
         aria-checked={theme === 'dark'}

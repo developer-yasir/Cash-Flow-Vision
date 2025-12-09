@@ -168,9 +168,49 @@ const getMe = async (req, res) => {
   }
 };
 
+// @desc    Get user preferences
+// @route   GET /api/user/preferences
+// @access  Private
+const getPreferences = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    res.status(200).json({ success: true, preferences: user.preferences });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Update user preferences
+// @route   PUT /api/user/preferences
+// @access  Private
+const updatePreferences = async (req, res) => {
+  try {
+    const { defaultCurrency, enableNotifications } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      {
+        'preferences.defaultCurrency': defaultCurrency,
+        'preferences.enableNotifications': enableNotifications,
+      },
+      { new: true, runValidators: true }
+    );
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    res.status(200).json({ success: true, preferences: user.preferences });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
   register,
   login,
   logout,
-  getMe
+  getMe,
+  getPreferences,
+  updatePreferences,
 };
