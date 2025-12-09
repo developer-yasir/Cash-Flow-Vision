@@ -1,66 +1,211 @@
 const express = require('express');
 const router = express.Router();
-const Expense = require('../models/Expense');
+const Transaction = require('../models/Transaction');
+const Budget = require('../models/Budget');
+const multer = require('multer');
+const path = require('path');
+const { protect } = require('../middleware/auth');
 
-// GET all expenses
-router.get('/', async (req, res) => {
-  try {
-    const expenses = await Expense.find().sort({ createdAt: -1 });
-    res.json(expenses);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+// Set up multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname));
   }
 });
 
-// GET single expense
-router.get('/:id', async (req, res) => {
+const upload = multer({ storage: storage });
+
+// GET all transactions (expenses and income) - Protected
+router.get('/', protect, async (req, res) => {
   try {
-    const expense = await Expense.findById(req.params.id);
-    if (!expense) {
-      return res.status(404).json({ error: 'Expense not found' });
+    const { type, category, startDate, endDate, page = 1, limit = 10 } = req.query;
+
+    // Only return transactions for the authenticated user
+    let filter = { user: req.user._id };
+    if (type) filter.type = type;
+    if (category) filter.category = category;
+    if (startDate || endDate) {
+      filter.date = {};
+      if (startDate) filter.date.$gte = new Date(startDate);
+      if (endDate) filter.date.$lte = new Date(endDate);
     }
-    res.json(expense);
+
+    const transactions = await Transaction.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Transaction.countDocuments(filter);
+
+    res.json({
+      transactions,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+      total
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// POST new expense
-router.post('/', async (req, res) => {
+// GET single transaction - Protected
+router.get('/:id', protect, async (req, res) => {
   try {
-    const expense = new Expense(req.body);
-    const savedExpense = await expense.save();
-    res.status(201).json(savedExpense);
+    const transaction = await Transaction.findOne({
+      _id: req.params.id,
+      user: req.user._id
+    });
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+    res.json(transaction);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST new transaction - Protected
+router.post('/', protect, upload.single('receipt'), async (req, res) => {
+  try {
+    const transactionData = {
+      ...req.body,
+      user: req.user._id  // Associate transaction with authenticated user
+    };
+
+    // Add receipt file path if uploaded
+    if (req.file) {
+      transactionData.receipt = `/uploads/${req.file.filename}`;
+    }
+
+    const transaction = new Transaction(transactionData);
+    const savedTransaction = await transaction.save();
+    res.status(201).json(savedTransaction);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-// PUT (update) expense
-router.put('/:id', async (req, res) => {
+// PUT (update) transaction - Protected
+router.put('/:id', protect, upload.single('receipt'), async (req, res) => {
   try {
-    const expense = await Expense.findByIdAndUpdate(
-      req.params.id,
-      req.body,
+    const transactionData = { ...req.body };
+
+    // Add receipt file path if uploaded
+    if (req.file) {
+      transactionData.receipt = `/uploads/${req.file.filename}`;
+    }
+
+    const transaction = await Transaction.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id }, // Ensure user owns the transaction
+      transactionData,
       { new: true, runValidators: true }
     );
-    if (!expense) {
-      return res.status(404).json({ error: 'Expense not found' });
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction not found' });
     }
-    res.json(expense);
+    res.json(transaction);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-// DELETE expense
-router.delete('/:id', async (req, res) => {
+// DELETE transaction - Protected
+router.delete('/:id', protect, async (req, res) => {
   try {
-    const expense = await Expense.findByIdAndDelete(req.params.id);
-    if (!expense) {
-      return res.status(404).json({ error: 'Expense not found' });
+    const transaction = await Transaction.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user._id  // Ensure user owns the transaction
+    });
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction not found' });
     }
-    res.json({ message: 'Expense deleted successfully' });
+    res.json({ message: 'Transaction deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET transactions by type (expense or income) - Protected
+router.get('/type/:type', protect, async (req, res) => {
+  try {
+    const transactions = await Transaction.find({
+      type: req.params.type,
+      user: req.user._id  // Only return transactions for authenticated user
+    })
+      .sort({ createdAt: -1 });
+    res.json(transactions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET recurring transactions - Protected
+router.get('/recurring/:pattern?', protect, async (req, res) => {
+  try {
+    const pattern = req.params.pattern;
+    // Only return recurring transactions for the authenticated user
+    const filter = {
+      isRecurring: true,
+      user: req.user._id
+    };
+
+    if (pattern) {
+      filter.recurringPattern = pattern;
+    }
+
+    const recurringTransactions = await Transaction.find(filter);
+    res.json(recurringTransactions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Export transactions as CSV - Protected
+router.get('/export/csv', protect, async (req, res) => {
+  try {
+    const { type, category, startDate, endDate } = req.query;
+
+    // Only export transactions for the authenticated user
+    let filter = { user: req.user._id };
+    if (type) filter.type = type;
+    if (category) filter.category = category;
+    if (startDate || endDate) {
+      filter.date = {};
+      if (startDate) filter.date.$gte = new Date(startDate);
+      if (endDate) filter.date.$lte = new Date(endDate);
+    }
+
+    const transactions = await Transaction.find(filter).sort({ date: -1 });
+
+    // Create CSV content
+    const headers = ['ID', 'Description', 'Amount', 'Type', 'Category', 'Date', 'Currency', 'Receipt', 'Is Recurring', 'Recurring Pattern', 'Budget ID', 'Created At', 'Updated At'];
+    const csvContent = [
+      headers.join(','),
+      ...transactions.map(transaction => [
+        transaction._id,
+        `"${transaction.description.replace(/"/g, '""')}"`, // Escape quotes in description
+        transaction.amount,
+        transaction.type,
+        transaction.category,
+        transaction.date.toISOString().split('T')[0],
+        transaction.currency,
+        transaction.receipt || '',
+        transaction.isRecurring,
+        transaction.recurringPattern || '',
+        transaction.budgetId || '',
+        transaction.createdAt.toISOString().split('T')[0],
+        transaction.updatedAt.toISOString().split('T')[0]
+      ].join(','))
+    ].join('\n');
+
+    // Set headers for CSV download
+    res.header('Content-Type', 'text/csv');
+    res.header('Content-Disposition', 'attachment; filename=transactions.csv');
+
+    res.send(csvContent);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
